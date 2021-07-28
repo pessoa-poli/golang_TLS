@@ -1,0 +1,10 @@
+###
+GET https://localhost:9500/api/v1
+
+### Dont forget to specify the path to the cert files in the config.json file.
+"rest-client.certificates": {
+    "https://localhost:9500/api/v1": {
+        "cert": "/projetos/go_projects/server_client_tls/server/certs/server.crt",
+        "key": "/projetos/go_projects/server_client_tls/server/certs/server.key"
+    }
+}
