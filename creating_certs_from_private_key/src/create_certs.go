@@ -1,4 +1,4 @@
-package main
+package cert_creator
 
 import (
 	"crypto/rand"
@@ -6,65 +6,79 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/big"
+	"os"
 	"time"
 )
 
-var pathToPrivateKeyFile = "/home/luado/projetos/go_projects/server_client_tls/creating_certs_from_private_key/certs/root.key"
+var (
+	pathToPrivateKeyFile = "/home/luado/projetos/go_projects/server_client_tls/creating_certs_from_private_key/certs/priv.key"
+	pathToPublicKeyFile  = "/home/luado/projetos/go_projects/server_client_tls/creating_certs_from_private_key/certs/pub.key"
+)
 
-func LoadFile(pathToFile string) []byte {
+//LoadPEMEncodedFile ... Reads the bytes loaded from a PEM encoded file in disk and returns the key stored in it.
+func LoadPEMEncodedFile(pathToFile string) *rsa.PrivateKey {
+	//Read the file that holds our PEMencodedPrivKey
 	fileBytes, err := ioutil.ReadFile(pathToFile)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	return fileBytes
-}
-
-func ParseRsaPrivateKeyFromPemStr(privPEM []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(privPEM)
+	//Decode the PEMencoded bytes.
+	block, rest := pem.Decode(fileBytes)
 	if block == nil {
-		return nil, errors.New("failed to parse PEM block containing the key")
+		log.Fatal("failed to decode PEM block containing public key")
 	}
-
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	//With the decoded block we can parse it and generate our Private key object
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
+	//Print remaining bytes (there shouldn't be any)
+	fmt.Printf("Got a %T, with remaining data: %q\n", key, rest)
 
-	return priv, nil
+	//Deliver the key to whomever called this function.
+	return key
 }
 
-func main() {
-	//pubPrivKeyPair, _ := rsa.GenerateKey(rand.Reader,2048)
-	privateKeyString := LoadFile(pathToPrivateKeyFile)
-	rsaPrivateKey, err := ParseRsaPrivateKeyFromPemStr(privateKeyString)
-	if err != nil {
-		panic(err.Error())
-	}
-	caTemplate := &x509.Certificate{
+func GenerateCertificateGivenPrivateKey(priv *rsa.PrivateKey, pathToPublicKeyFile string) {
+	//Our publicKey is embedded on the struct that holds the privateKey.
+	pub := &priv.PublicKey
+
+	//Create a certificate template
+	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(1653),
 		Subject: pkix.Name{
-			Country:            []string{"Brazil_Camtec"},
-			Organization:       []string{"Camtec"},
-			OrganizationalUnit: []string{"Main"},
-			Locality:           []string{"Rio de Janeiro"},
-			Province:           []string{"Nova América"},
-			StreetAddress:      []string{"num"},
-			PostalCode:         []string{"123"},
+			Organization:  []string{"ORGANIZATION_NAME"},
+			Country:       []string{"COUNTRY_CODE"},
+			Province:      []string{"PROVINCE"},
+			Locality:      []string{"CITY"},
+			StreetAddress: []string{"ADDRESS"},
+			PostalCode:    []string{"POSTAL_CODE"},
 		},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(0, 1, 0),
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
+		NotAfter:              time.Now().AddDate(10, 0, 0),
 		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
 	}
-	ca, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, rsaPrivateKey.PublicKey, rsaPrivateKey)
+
+	//Generate our certificate using the pub and priv keys and the template above.
+	ca_b, err := x509.CreateCertificate(rand.Reader, ca, ca, pub, priv)
+	if err != nil {
+		log.Println("create ca failed", err)
+		return
+	}
+
+	//Store the certificate locally in disk.
+	certOut, err := os.Create(pathToPublicKeyFile)
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("CA is: %v\n", ca)
+	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: ca_b})
+	certOut.Close()
+	log.Print("written cert.pem\n")
 }

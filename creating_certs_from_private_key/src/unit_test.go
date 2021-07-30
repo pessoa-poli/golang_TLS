@@ -1,15 +1,14 @@
-package main
+package cert_creator
 
 import (
-	"fmt"
 	"testing"
 )
 
-func TestParseRsaPrivateKeyFromPemStr(t *testing.T) {
-	fileBytes := LoadFile(pathToPrivateKeyFile)
-	rsaPrivateKey, err := ParseRsaPrivateKeyFromPemStr(fileBytes)
-	if err != nil {
-		panic(err.Error())
-	}
-	fmt.Println(rsaPrivateKey)
+func TestLoadPEMEncodedFile(t *testing.T) {
+	LoadPEMEncodedFile(pathToPrivateKeyFile)
+}
+
+func TestGenerateCertificateGivenPrivateKey(t *testing.T) {
+	priv := LoadPEMEncodedFile(pathToPrivateKeyFile)
+	GenerateCertificateGivenPrivateKey(priv, pathToPublicKeyFile)
 }

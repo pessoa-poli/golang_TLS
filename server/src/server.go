@@ -87,7 +87,7 @@ func main() {
 	server.Handler = r
 
 	//log.Fatal(http.ListenAndServe(":9001", r))
-	if err := server.ListenAndServeTLS(serverCert, srvKey); err != nil {
+	if err := server.ListenAndServeTLS(serverCertPath, srvKeyPath); err != nil {
 		log.Fatal(err)
 	}
 }

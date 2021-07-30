@@ -14,23 +14,25 @@ import (
 //Server & client configuration vars
 var (
 	// Server
-	server_file   = "otherClient"
-	workingDir, _ = os.Getwd()
-	serverCert    = workingDir + fmt.Sprintf("/../certs/otherca/%s.crt", server_file)
-	srvKey        = workingDir + fmt.Sprintf("/../certs/otherca/%s.key", server_file)
-	caCertFile    = workingDir + "/../certs/otherca/otherCA.crt"
-	certOpt       = tls.RequireAndVerifyClientCert
-	server        = &http.Server{
+	server_file    = "otherClient"
+	workingDir, _  = os.Getwd()
+	serverCertPath = workingDir + fmt.Sprintf("/../certs/otherca/%s.crt", server_file)
+	srvKeyPath     = workingDir + fmt.Sprintf("/../certs/otherca/%s.key", server_file)
+	caCertFilePath = workingDir + "/../certs/otherca/otherCA.crt"
+
+	certOpt = tls.RequireAndVerifyClientCert
+
+	server = &http.Server{
 		Addr:         ":" + "9500",
 		ReadTimeout:  5 * time.Minute, // 5 min to allow for delays when 'curl' on OSx prompts for username/password
 		WriteTimeout: 10 * time.Second,
-		TLSConfig:    getTLSConfig(host, caCertFile, tls.ClientAuthType(certOpt)),
+		TLSConfig:    getTLSConfig(host, caCertFilePath, tls.ClientAuthType(certOpt)),
 	}
 	//Client
 	host           = "RNP_CA"
 	clientCertFile = workingDir + fmt.Sprintf("/../certs/%s.crt", host)
 	clientKeyFile  = workingDir + fmt.Sprintf("/../certs/%s.key", host)
-	caCert         = readCaCert(caCertFile)
+	caCert         = readCaCert(caCertFilePath)
 	caCertPool     = generateCACertPool(caCert)
 	cert           = x509KeyPairLoader(clientCertFile, clientKeyFile)
 	t              = &http.Transport{
