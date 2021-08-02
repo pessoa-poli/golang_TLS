@@ -3,38 +3,33 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	c "server_client_tls/cert_creator/src"
 	"time"
 )
 
 //Server & client configuration vars
 var (
+	//Globals
+	PATH_TO_PRIVATE_KEY = "/home/luado/projetos/go_projects/server_client_tls/server/certs/priv.key"
+	PATH_TO_PUBLIC_CERT = "/home/luado/projetos/go_projects/server_client_tls/server/certs/cert.key"
+
 	// Server
-	server_file    = "otherClient"
-	workingDir, _  = os.Getwd()
-	serverCertPath = workingDir + fmt.Sprintf("/../certs/otherca/%s.crt", server_file)
-	srvKeyPath     = workingDir + fmt.Sprintf("/../certs/otherca/%s.key", server_file)
-	caCertFilePath = workingDir + "/../certs/otherca/otherCA.crt"
+	HOST           = "localhost"
+	server         *http.Server
+	rsaPriv        = c.LoadPEMEncodedFile(PATH_TO_PRIVATE_KEY)
+	serverCertPath = PATH_TO_PUBLIC_CERT
+	srvKeyPath     = PATH_TO_PRIVATE_KEY
+	certOpt        = tls.RequireAndVerifyClientCert
 
-	certOpt = tls.RequireAndVerifyClientCert
-
-	server = &http.Server{
-		Addr:         ":" + "9500",
-		ReadTimeout:  5 * time.Minute, // 5 min to allow for delays when 'curl' on OSx prompts for username/password
-		WriteTimeout: 10 * time.Second,
-		TLSConfig:    getTLSConfig(host, caCertFilePath, tls.ClientAuthType(certOpt)),
-	}
 	//Client
-	host           = "RNP_CA"
-	clientCertFile = workingDir + fmt.Sprintf("/../certs/%s.crt", host)
-	clientKeyFile  = workingDir + fmt.Sprintf("/../certs/%s.key", host)
-	caCert         = readCaCert(caCertFilePath)
-	caCertPool     = generateCACertPool(caCert)
-	cert           = x509KeyPairLoader(clientCertFile, clientKeyFile)
+	clientCertFile = PATH_TO_PUBLIC_CERT
+	clientKeyFile  = PATH_TO_PRIVATE_KEY
+	caCert         []byte
+	caCertPool     *x509.CertPool
+	cert           tls.Certificate
 	t              = &http.Transport{
 		TLSClientConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
@@ -43,6 +38,19 @@ var (
 	}
 	globalHTTPClient = http.Client{Transport: t, Timeout: 15 * time.Second}
 )
+
+func init() {
+	c.GenerateCertificateGivenPrivateKey(rsaPriv, PATH_TO_PUBLIC_CERT)
+	caCert = readCaCert(PATH_TO_PUBLIC_CERT)
+	caCertPool = generateCACertPool(caCert)
+	cert = x509KeyPairLoader(clientCertFile, clientKeyFile)
+	server = &http.Server{
+		Addr:         ":" + "9500",
+		ReadTimeout:  5 * time.Minute, // 5 min to allow for delays when 'curl' on OSx prompts for username/password
+		WriteTimeout: 10 * time.Second,
+		TLSConfig:    getTLSConfig(HOST, PATH_TO_PUBLIC_CERT, tls.ClientAuthType(certOpt)),
+	}
+}
 
 func x509KeyPairLoader(clientCertFile, clientKeyFile string) tls.Certificate {
 	cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
