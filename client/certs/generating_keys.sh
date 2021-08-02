@@ -1,5 +1,5 @@
 #!/bin/sh
-#openssl genrsa -out otherCA.key 2048
+openssl genrsa -out priv.key 2048
 openssl req -x509 -new -nodes -key otherCA.key -sha256 -days 1825 -out otherCA.crt
 
 openssl genrsa -out otherClient.key 2048

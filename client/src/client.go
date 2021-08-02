@@ -1,34 +1,50 @@
 package main
 
 import (
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+	c "server_client_tls/cert_creator/src"
 	"time"
 )
 
 var (
+	//Globals
+	PATH_TO_PRIVATE_KEY = "/home/luado/projetos/go_projects/server_client_tls/client/certs/priv.key"
+	PATH_TO_PUBLIC_CERT = "/home/luado/projetos/go_projects/server_client_tls/client/certs/cert.key"
+
+	rsaPriv *rsa.PrivateKey
+
 	//Client
-	host           = "otherClient"
-	workingDir, _  = os.Getwd()
-	clientCertFile = workingDir + fmt.Sprintf("/../certs/otherca/%s.crt", host)
-	clientKeyFile  = workingDir + fmt.Sprintf("/../certs/otherca/%s.key", host)
-	caCertFile     = workingDir + "/../certs/otherca/otherCA.crt"
-	caCertBytes    = readCaCert(caCertFile)
-	caCertPool     = generateCACertPool(caCertBytes)
-	cert           = x509KeyPairLoader(clientCertFile, clientKeyFile)
-	t              = &http.Transport{
+	clientCertFile   = PATH_TO_PUBLIC_CERT
+	clientKeyFile    = PATH_TO_PRIVATE_KEY
+	caCertFile       = PATH_TO_PUBLIC_CERT
+	caCertBytes      []byte
+	caCertPool       *x509.CertPool
+	cert             tls.Certificate
+	t                *http.Transport
+	globalHTTPClient http.Client
+)
+
+//Initializes all variables above.
+func init() {
+	rsaPriv = c.LoadPEMEncodedFile(PATH_TO_PRIVATE_KEY)
+	c.GenerateCertificateGivenPrivateKey(rsaPriv, PATH_TO_PUBLIC_CERT)
+	caCertBytes = readCaCert(caCertFile)
+	caCertPool = generateCACertPool(caCertBytes)
+	cert = x509KeyPairLoader(clientCertFile, clientKeyFile)
+	t = &http.Transport{
 		TLSClientConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			RootCAs:      caCertPool,
 		},
 	}
 	globalHTTPClient = http.Client{Transport: t, Timeout: 15 * time.Second}
-)
+}
 
 func x509KeyPairLoader(clientCertFile, clientKeyFile string) tls.Certificate {
 	cert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
