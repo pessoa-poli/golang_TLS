@@ -20,6 +20,31 @@ func get(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get called.")
 }
 
+//post ... Being used for cmmunication debugging.
+func post(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "post called"}`))
+	fmt.Println("Post called.")
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Printf("Request's body could not be read: %v", err)
+		w.Write([]byte("Bad request."))
+		return
+	}
+
+	var bodyInterface interface{}
+	json.Unmarshal(bodyBytes, &bodyInterface)
+	responseMap := bodyInterface.(map[string]interface{})
+	pass, ok := responseMap["password"]
+	if ok {
+		fmt.Printf("Password is: %v", pass.(string))
+	} else {
+		fmt.Println("No password sent on request.")
+	}
+}
+
 //put ... Not being used.
 func put(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -77,7 +102,7 @@ func main() {
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("", get).Methods(http.MethodGet)
 	//api.HandleFunc("", collect).Methods(http.MethodPost)
-	//api.HandleFunc("", post).Methods(http.MethodPost)
+	api.HandleFunc("", post).Methods(http.MethodPost)
 	//api.HandleFunc("/collection/endresults", sendCollectionEndResultsToMySQL).Methods(http.MethodPost)
 
 	api.HandleFunc("", put).Methods(http.MethodPut)

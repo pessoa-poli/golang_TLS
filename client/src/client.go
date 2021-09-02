@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -41,6 +43,7 @@ func init() {
 		TLSClientConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			RootCAs:      caCertPool,
+			ClientAuth:   tls.RequireAndVerifyClientCert,
 		},
 	}
 	globalHTTPClient = http.Client{Transport: t, Timeout: 15 * time.Second}
@@ -69,12 +72,30 @@ func readCaCert(caCertFile string) []byte {
 }
 
 func main() {
-
+	//Get Request
 	resp, err := globalHTTPClient.Get("https://localhost:9500/api/v1")
 	if err != nil {
 		panic(err.Error())
 	}
 	rspFull, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println("RespoFUll: " + string(rspFull))
+	fmt.Println(string(rspFull))
+
+	//Post request
+	postBody, _ := json.Marshal(map[string]string{
+		"name":     "Tobe",
+		"password": "tobebadtobegood",
+	})
+	responseBody := bytes.NewBuffer(postBody)
+
+	resp, err = globalHTTPClient.Post("https://localhost:9500/api/v1", "application/json", responseBody)
+	if err != nil {
+		panic(err.Error())
+	}
+	rspFull, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err.Error())
 	}
